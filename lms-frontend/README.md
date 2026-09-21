@@ -13,9 +13,3 @@ Next.js 14 (App Router) + Tailwind CSS.
 - `/courses/[slug]` — course detail, modules/lessons, enroll button
 - `/login`, `/register` — auth
 - `/dashboard` — enrolled courses + progress
-
-## Not included yet
-- Lesson video player page
-- Quiz-taking UI
-- Payment checkout flow
-- Certificate download
