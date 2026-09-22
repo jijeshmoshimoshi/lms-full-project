@@ -27,6 +27,7 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const commentRoutes = require('./routes/commentRoutes');
 const snippetRoutes = require('./routes/snippetRoutes');
+const gamificationRoutes = require('./routes/gamificationRoutes');
 
 
 const { startReminderScheduler } = require('./services/reminderScheduler');
@@ -144,6 +145,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/comments', commentRoutes);
 app.use('/api/snippets', snippetRoutes);
+app.use('/api/gamification', gamificationRoutes);
 
 
 // 404 handler

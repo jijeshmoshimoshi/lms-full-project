@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import api from '../../../lib/api';
 import { useAuth } from '../../../context/AuthContext';
+import { useGamification } from '../../../context/GamificationContext';
 import AdvancedVideoPlayer from '../../../components/AdvancedVideoPlayer';
 import CertificateModal from '../../../components/CertificateModal';
 import RazorpayCheckoutModal from '../../../components/RazorpayCheckoutModal';
@@ -29,6 +30,7 @@ export default function CourseDetailsPage() {
   const { slug } = useParams();
   const { user } = useAuth();
   const { addToCart, isInCart } = useCart();
+  const { triggerReward } = useGamification();
 
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -178,6 +180,9 @@ export default function CourseDetailsPage() {
     try {
       const res = await api.get(`/courses/${slug}`);
       setCourse(res.data);
+      if (user) {
+        fetchUserEnrollment(res.data);
+      }
 
       // Select first lesson by default
       if (res.data.modules && res.data.modules.length > 0) {
@@ -229,18 +234,28 @@ export default function CourseDetailsPage() {
     }
   };
 
-  const fetchUserEnrollment = async () => {
-    if (!user) return;
+  const fetchUserEnrollment = async (courseToMatch = course) => {
+    if (!user) {
+      setEnrollment(null);
+      return;
+    }
     try {
       const res = await api.get('/enrollments/me');
-      const myEnrollment = res.data.find(
-        (e) => e.course?._id === course?._id || e.course === course?._id
-      );
+      const enrollmentsList = Array.isArray(res.data) ? res.data : (res.data?.enrollments || []);
+      const myEnrollment = enrollmentsList.find((e) => {
+        const enrolledCourseId = String(e.course?._id || e.course || '');
+        const targetCourseId = String(courseToMatch?._id || '');
+        const enrolledSlug = e.course?.slug;
+        const targetSlug = courseToMatch?.slug || slug;
+        return (enrolledCourseId && enrolledCourseId === targetCourseId) || (enrolledSlug && targetSlug && enrolledSlug === targetSlug);
+      });
       if (myEnrollment) {
         setEnrollment(myEnrollment);
+      } else {
+        setEnrollment(null);
       }
     } catch (err) {
-      console.error(err);
+      console.error('Error fetching user enrollment:', err);
     }
   };
 
@@ -249,8 +264,8 @@ export default function CourseDetailsPage() {
   }, [slug]);
 
   useEffect(() => {
-    if (course && user) fetchUserEnrollment();
-  }, [course, user]);
+    if (course && user) fetchUserEnrollment(course);
+  }, [user]);
 
   // Handle Review Submission
   const handleAddReviewSubmit = async (e) => {
@@ -462,6 +477,11 @@ export default function CourseDetailsPage() {
       });
       setEnrollment(res.data);
 
+      // Trigger gamification XP & Streak celebration
+      if (res.data.gamification && triggerReward) {
+        triggerReward(res.data.gamification);
+      }
+
       if (res.data.progressPercent >= 100 && res.data.certificateStatus !== 'revoked') {
         setCertificateData({
           certificateId: res.data.certificateId || `CERT-${new Date().getFullYear()}-AWARD`,
@@ -582,9 +602,12 @@ export default function CourseDetailsPage() {
 
   // Filter active coupons from DB applicable to this specific course
   const applicableActiveCoupons = availableCoupons.filter((c) => {
-    if (c.applicableTo === 'all') return true;
-    if (c.courses && Array.isArray(c.courses)) {
-      return c.courses.some(id => String(typeof id === 'object' ? id._id : id) === String(course?._id));
+    if (!c.applicableTo || c.applicableTo === 'all') return true;
+    if (c.courses && Array.isArray(c.courses) && course?._id) {
+      return c.courses.some((id) => {
+        const idStr = String(typeof id === 'object' && id !== null ? (id._id || id) : id);
+        return idStr === String(course._id);
+      });
     }
     return false;
   });
@@ -1516,70 +1539,112 @@ export default function CourseDetailsPage() {
                 {/* Card Content: Price, Buy Now, Features */}
                 <div className="p-6 space-y-5">
                   
-                  {/* Real Pricing Details */}
-                  <div className="space-y-3">
-                    {hasDiscount && (
-                      <div className="p-3 bg-gradient-to-r from-rose-50 to-amber-50 rounded-2xl border border-rose-200/70 space-y-1.5 shadow-xs">
-                        <div className="flex items-center justify-between">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white uppercase tracking-wider shadow-xs">
-                            <Sparkles className="w-3 h-3" />
-                            <span>{course.offerBadgeText || 'Special Offer Deal'}</span>
-                          </span>
-                          <span className="text-xs font-black text-rose-700">
-                            Save ₹{(course.originalPrice - course.price).toLocaleString('en-IN')} ({discountPercent}% OFF)
-                          </span>
+                  {isEnrolled ? (
+                    /* =========================================================
+                       ENROLLED LEARNER STATUS VIEW (Hide price & coupons)
+                       ========================================================= */
+                    <div className="space-y-4">
+                      <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200/80 space-y-2.5">
+                        <div className="flex items-center gap-2 text-emerald-900 font-extrabold text-sm">
+                          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                          <span>You own this course</span>
                         </div>
-                        {course.offerExpiresAt && !isOfferExpired && (
-                          <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900 pt-1.5 border-t border-rose-100">
-                            <Clock className="w-3.5 h-3.5 text-amber-600 animate-pulse shrink-0" />
-                            <span>
-                              Deal ends in: {timeLeft.days > 0 ? `${timeLeft.days}d ` : ''}
-                              {String(timeLeft.hours).padStart(2, '0')}h : {String(timeLeft.minutes).padStart(2, '0')}m : {String(timeLeft.seconds).padStart(2, '0')}s
-                            </span>
+                        <div className="space-y-1.5 pt-1">
+                          <div className="flex items-center justify-between text-xs text-emerald-800 font-bold">
+                            <span>Learning Progress</span>
+                            <span>{currentProgressPercent}%</span>
                           </div>
+                          <div className="w-full h-2 rounded-full bg-emerald-200/80 overflow-hidden">
+                            <div 
+                              className="h-full bg-emerald-600 rounded-full transition-all duration-300"
+                              style={{ width: `${currentProgressPercent}%` }}
+                            />
+                          </div>
+                          <p className="text-[11px] text-emerald-700">
+                            {completedCount} of {totalLessons} lectures completed
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        <button
+                          onClick={() => setViewMode('classroom')}
+                          className="w-full py-3.5 px-6 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-extrabold rounded-2xl shadow-lg shadow-indigo-600/30 transition text-sm flex items-center justify-center gap-2 cursor-pointer"
+                        >
+                          <Play className="w-4 h-4 fill-white" />
+                          <span>{completedCount > 0 ? 'Continue Learning' : 'Start Learning Now'}</span>
+                        </button>
+
+                        {(isCourseFinished || enrollment?.certificateIssued) && (
+                          <button
+                            onClick={handleOpenCertificate}
+                            className="w-full py-3 px-6 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold rounded-2xl transition text-sm flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                          >
+                            <Award className="w-4 h-4 text-slate-950" />
+                            <span>View Certificate</span>
+                          </button>
                         )}
                       </div>
-                    )}
-
-                    <div className="flex items-baseline gap-3">
-                      <span className="text-3xl font-extrabold text-slate-900 font-heading">
-                        {course.price > 0 ? (
-                          couponDiscountAmount > 0 ? (
-                            `₹${effectivePrice.toLocaleString('en-IN')}`
-                          ) : (
-                            `₹${course.price.toLocaleString('en-IN')}`
-                          )
-                        ) : 'Free'}
-                      </span>
-                      {course.price > 0 && (hasDiscount || couponDiscountAmount > 0) && (
-                        <span className="text-sm font-semibold text-slate-400 line-through">
-                          ₹{(hasDiscount ? course.originalPrice : course.price).toLocaleString('en-IN')}
-                        </span>
-                      )}
-                      {couponDiscountAmount > 0 ? (
-                        <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full">
-                          {couponData?.savingsText || `${couponData?.discountPercent || ''}% off with coupon`}
-                        </span>
-                      ) : hasDiscount ? (
-                        <span className="text-xs font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
-                          {discountPercent}% off
-                        </span>
-                      ) : null}
                     </div>
-                  </div>
+                  ) : (
+                    /* =========================================================
+                       UNENROLLED / MARKETPLACE SALES VIEW (Show price & coupons)
+                       ========================================================= */
+                    <>
+                      {/* Real Pricing Details */}
+                      <div className="space-y-3">
+                        {hasDiscount && (
+                          <div className="p-3 bg-gradient-to-r from-rose-50 to-amber-50 rounded-2xl border border-rose-200/70 space-y-1.5 shadow-xs">
+                            <div className="flex items-center justify-between">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white uppercase tracking-wider shadow-xs">
+                                <Sparkles className="w-3 h-3" />
+                                <span>{course.offerBadgeText || 'Special Offer Deal'}</span>
+                              </span>
+                              <span className="text-xs font-black text-rose-700">
+                                Save ₹{(course.originalPrice - course.price).toLocaleString('en-IN')} ({discountPercent}% OFF)
+                              </span>
+                            </div>
+                            {course.offerExpiresAt && !isOfferExpired && (
+                              <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900 pt-1.5 border-t border-rose-100">
+                                <Clock className="w-3.5 h-3.5 text-amber-600 animate-pulse shrink-0" />
+                                <span>
+                                  Deal ends in: {timeLeft.days > 0 ? `${timeLeft.days}d ` : ''}
+                                  {String(timeLeft.hours).padStart(2, '0')}h : {String(timeLeft.minutes).padStart(2, '0')}m : {String(timeLeft.seconds).padStart(2, '0')}s
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        )}
 
-                  {/* Actions: Buy Now / Go to Classroom */}
-                  <div className="space-y-2.5">
-                    {isEnrolled ? (
-                      <button
-                        onClick={() => setViewMode('classroom')}
-                        className="w-full py-3.5 px-6 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-extrabold rounded-2xl shadow-lg shadow-indigo-600/30 transition text-sm flex items-center justify-center gap-2 cursor-pointer"
-                      >
-                        <Play className="w-4 h-4 fill-white" />
-                        <span>Go to Classroom</span>
-                      </button>
-                    ) : (
-                      <>
+                        <div className="flex items-baseline gap-3">
+                          <span className="text-3xl font-extrabold text-slate-900 font-heading">
+                            {course.price > 0 ? (
+                              couponDiscountAmount > 0 ? (
+                                `₹${effectivePrice.toLocaleString('en-IN')}`
+                              ) : (
+                                `₹${course.price.toLocaleString('en-IN')}`
+                              )
+                            ) : 'Free'}
+                          </span>
+                          {course.price > 0 && (hasDiscount || couponDiscountAmount > 0) && (
+                            <span className="text-sm font-semibold text-slate-400 line-through">
+                              ₹{(hasDiscount ? course.originalPrice : course.price).toLocaleString('en-IN')}
+                            </span>
+                          )}
+                          {couponDiscountAmount > 0 ? (
+                            <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full">
+                              {couponData?.savingsText || `${couponData?.discountPercent || ''}% off with coupon`}
+                            </span>
+                          ) : hasDiscount ? (
+                            <span className="text-xs font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+                              {discountPercent}% off
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      {/* Actions: Buy Now / Add to Cart */}
+                      <div className="space-y-2.5">
                         <button
                           onClick={handleEnroll}
                           disabled={enrolling || processingPayment}
@@ -1613,102 +1678,122 @@ export default function CourseDetailsPage() {
                             </button>
                           )
                         )}
-                      </>
-                    )}
-                  </div>
-
-                  {/* Money Back Guarantee */}
-                  <p className="text-[11px] text-center text-slate-500">
-                    30-day money-back guarantee
-                  </p>
-
-                  {/* Coupon & Promotional Code (Udemy Style) */}
-                  {!isEnrolled && course.price > 0 && (
-                    <div className="pt-3 border-t border-slate-100 space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold uppercase tracking-wider text-slate-700 block">
-                          Promotions
-                        </span>
-                        <span className="text-[11px] text-indigo-600 font-bold flex items-center gap-1">
-                          <Tag className="w-3 h-3" />
-                          <span>Special Offer</span>
-                        </span>
                       </div>
 
-                      {couponData ? (
-                        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-start justify-between gap-2">
-                          <div className="space-y-0.5">
-                            <span className="text-xs font-bold text-emerald-900 flex items-center gap-1.5 font-mono">
-                              <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                              <span>{couponData.code} APPLIED</span>
+                      {/* Money Back Guarantee */}
+                      <p className="text-[11px] text-center text-slate-500">
+                        30-day money-back guarantee
+                      </p>
+
+                      {/* Coupon & Promotional Code Section */}
+                      {course.price > 0 && (
+                        <div className="pt-3 border-t border-slate-100 space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold uppercase tracking-wider text-slate-700 block">
+                              Promotions & Coupons
                             </span>
-                            <p className="text-[11px] font-bold text-emerald-700">
-                              {couponData.savingsText || `${couponData.discountPercent}% coupon savings`}
-                            </p>
-                            {couponData.description && (
-                              <p className="text-[10px] text-emerald-600">
-                                {couponData.description}
-                              </p>
-                            )}
-                          </div>
-                          <button
-                            onClick={removeCoupon}
-                            className="text-xs text-slate-400 hover:text-rose-600 transition font-bold p-1 rounded-lg hover:bg-emerald-100/50 cursor-pointer"
-                            title="Remove coupon"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          <div className="flex gap-2">
-                            <input
-                              type="text"
-                              placeholder="Enter Promo Code"
-                              value={couponCode}
-                              onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                              className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs uppercase font-mono font-bold tracking-wider focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => applyCoupon(couponCode)}
-                              disabled={couponLoading || !couponCode.trim()}
-                              className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition disabled:opacity-50 cursor-pointer shrink-0"
-                            >
-                              {couponLoading ? 'Applying...' : 'Apply'}
-                            </button>
+                            <span className="text-[11px] text-indigo-600 font-bold flex items-center gap-1">
+                              <Tag className="w-3 h-3" />
+                              <span>Verified Offers</span>
+                            </span>
                           </div>
 
-                          {/* Quick Coupon Suggestions - only if real coupons exist in DB */}
-                          {applicableActiveCoupons.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 pt-1">
-                              {applicableActiveCoupons.map((promo) => (
+                          {couponData ? (
+                            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-start justify-between gap-2">
+                              <div className="space-y-0.5">
+                                <span className="text-xs font-bold text-emerald-900 flex items-center gap-1.5 font-mono">
+                                  <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                  <span>{couponData.code} APPLIED</span>
+                                </span>
+                                <p className="text-[11px] font-bold text-emerald-700">
+                                  {couponData.savingsText || (couponData.discountPercent ? `${couponData.discountPercent}% discount applied` : `₹${couponData.discountAmount} savings applied`)}
+                                </p>
+                                {couponData.description && (
+                                  <p className="text-[10px] text-emerald-600">
+                                    {couponData.description}
+                                  </p>
+                                )}
+                              </div>
+                              <button
+                                onClick={removeCoupon}
+                                className="text-xs text-slate-400 hover:text-rose-600 transition font-bold p-1 rounded-lg hover:bg-emerald-100/50 cursor-pointer"
+                                title="Remove coupon"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="space-y-2.5">
+                              <div className="flex gap-2">
+                                <input
+                                  type="text"
+                                  placeholder="Enter Promo Code"
+                                  value={couponCode}
+                                  onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                                  className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs uppercase font-mono font-bold tracking-wider focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                                />
                                 <button
-                                  key={promo._id || promo.code}
                                   type="button"
-                                  onClick={() => applyCoupon(promo.code)}
-                                  disabled={couponLoading}
-                                  className="flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100/80 border border-indigo-200/60 text-indigo-700 text-[10px] font-bold transition cursor-pointer"
+                                  onClick={() => applyCoupon(couponCode)}
+                                  disabled={couponLoading || !couponCode.trim()}
+                                  className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition disabled:opacity-50 cursor-pointer shrink-0"
                                 >
-                                  <Sparkles className="w-2.5 h-2.5 text-indigo-500" />
-                                  <span className="font-mono">{promo.code}</span>
-                                  <span className="text-[9px] text-indigo-500 font-normal">
-                                    ({promo.discountType === 'percentage' ? `${promo.discountValue}% OFF` : `₹${promo.discountValue} OFF`})
-                                  </span>
+                                  {couponLoading ? 'Applying...' : 'Apply'}
                                 </button>
-                              ))}
+                              </div>
+
+                              {/* Available Applicable Coupons List from DB */}
+                              {applicableActiveCoupons.length > 0 && (
+                                <div className="space-y-1.5 pt-1">
+                                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                                    Available Offers
+                                  </span>
+                                  <div className="space-y-1.5">
+                                    {applicableActiveCoupons.map((promo) => (
+                                      <div
+                                        key={promo._id || promo.code}
+                                        className="p-2.5 rounded-xl bg-indigo-50/70 border border-indigo-200/80 flex items-center justify-between gap-2 transition hover:bg-indigo-50"
+                                      >
+                                        <div className="min-w-0 space-y-0.5">
+                                          <div className="flex items-center gap-1.5 flex-wrap">
+                                            <span className="font-mono font-bold text-xs text-indigo-950 px-1.5 py-0.5 bg-white rounded border border-indigo-200">
+                                              {promo.code}
+                                            </span>
+                                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-1.5 py-0.5 rounded">
+                                              {promo.discountType === 'percentage' ? `${promo.discountValue}% OFF` : `₹${promo.discountValue} OFF`}
+                                            </span>
+                                          </div>
+                                          {promo.description ? (
+                                            <p className="text-[10px] text-slate-500 truncate">{promo.description}</p>
+                                          ) : promo.minOrderAmount > 0 ? (
+                                            <p className="text-[10px] text-slate-400">Min. order ₹{promo.minOrderAmount}</p>
+                                          ) : null}
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={() => applyCoupon(promo.code)}
+                                          disabled={couponLoading}
+                                          className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[11px] font-bold transition disabled:opacity-50 cursor-pointer shrink-0"
+                                        >
+                                          Apply
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {couponError && (
+                            <div className="p-2.5 bg-rose-50 border border-rose-200/80 rounded-xl flex items-center gap-1.5 text-[11px] text-rose-600 font-medium">
+                              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                              <span>{couponError}</span>
                             </div>
                           )}
                         </div>
                       )}
-
-                      {couponError && (
-                        <div className="p-2 bg-rose-50 border border-rose-200/80 rounded-xl flex items-center gap-1.5 text-[10px] text-rose-600 font-medium">
-                          <AlertCircle className="w-3 h-3 shrink-0" />
-                          <span>{couponError}</span>
-                        </div>
-                      )}
-                    </div>
+                    </>
                   )}
 
                   {/* Course Features Checklist */}
@@ -1747,20 +1832,6 @@ export default function CourseDetailsPage() {
                       <Share2 className="w-3.5 h-3.5" />
                       <span>{copiedLink ? 'Link Copied!' : 'Share Course'}</span>
                     </button>
-                    {course.price > 0 && (
-                      <button
-                        onClick={() => {
-                          const code = prompt('Enter coupon promo code (e.g. EARLYBIRD20):');
-                          if (code) {
-                            setCouponCode(code);
-                            handleApplyCoupon();
-                          }
-                        }}
-                        className="flex items-center gap-1.5 text-indigo-600 hover:text-indigo-700 underline cursor-pointer"
-                      >
-                        <span>Apply Coupon</span>
-                      </button>
-                    )}
                   </div>
 
                 </div>

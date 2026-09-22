@@ -1,17 +1,23 @@
 'use client';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../context/AuthContext';
 import { User, Mail, Lock, UserPlus, Sparkles, AlertCircle, GraduationCap, Eye, EyeOff } from 'lucide-react';
 
-export default function RegisterPage() {
+function RegisterForm() {
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'student' });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const { register } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const rawRedirect = searchParams.get('redirect');
+  const redirectUrl = (rawRedirect && rawRedirect.startsWith('/') && !rawRedirect.startsWith('//'))
+    ? rawRedirect
+    : '/dashboard';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -19,7 +25,7 @@ export default function RegisterPage() {
     setSubmitting(true);
     try {
       await register(form.name, form.email, form.password, form.role);
-      router.push('/dashboard');
+      router.push(redirectUrl);
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed');
     } finally {
@@ -57,7 +63,7 @@ export default function RegisterPage() {
               <input 
                 type="text" 
                 placeholder="Jane Doe" 
-                value={form.name}
+                value={form.name} 
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white transition" 
                 required 
@@ -72,7 +78,7 @@ export default function RegisterPage() {
               <input 
                 type="email" 
                 placeholder="you@example.com" 
-                value={form.email}
+                value={form.email} 
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white transition" 
                 required 
@@ -130,11 +136,26 @@ export default function RegisterPage() {
 
         <div className="mt-8 text-center text-xs text-slate-500">
           Already have an account?{' '}
-          <Link href="/login" className="font-bold text-indigo-600 hover:underline">
+          <Link 
+            href={rawRedirect ? `/login?redirect=${encodeURIComponent(rawRedirect)}` : '/login'} 
+            className="font-bold text-indigo-600 hover:underline"
+          >
             Sign in
           </Link>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-[85vh] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <RegisterForm />
+    </Suspense>
   );
 }

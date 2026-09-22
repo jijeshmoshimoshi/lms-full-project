@@ -6,10 +6,11 @@ import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import api from '../lib/api';
 import io from 'socket.io-client';
+import NavbarGamificationPill from './NavbarGamificationPill';
 import { 
   BookOpen, GraduationCap, LayoutDashboard, LogOut, 
   Sparkles, Shield, ShoppingCart, Menu, X, User,
-  Bell, Radio, Clock, CheckCheck, ExternalLink, Calendar, Code2
+  Bell, Radio, Clock, CheckCheck, ExternalLink, Calendar, Code2, Trophy, Flame
 } from 'lucide-react';
 
 
@@ -181,6 +182,18 @@ export default function Navbar() {
             </span>
           </Link>
 
+          <Link
+            href="/leaderboard"
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+              isActive('/leaderboard')
+                ? 'bg-indigo-50 text-indigo-600 font-bold shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
+            }`}
+          >
+            <Trophy className="w-4 h-4 text-amber-500" />
+            <span>Leaderboard</span>
+          </Link>
+
           {user && (
             <Link
               href="/dashboard"
@@ -209,8 +222,11 @@ export default function Navbar() {
           )}
         </nav>
 
-        {/* Right Action Area (Desktop + Mobile Cart, Notifications & Toggle) */}
+        {/* Right Action Area (Desktop + Mobile Cart, Gamification Pill, Notifications & Toggle) */}
         <div className="flex items-center gap-1.5 sm:gap-2.5">
+          
+          {/* Gamification Streak & XP Widget (when logged in) */}
+          {user && <NavbarGamificationPill />}
           
           {/* Notification Bell Button (when logged in) */}
           {user && (
@@ -484,6 +500,18 @@ export default function Navbar() {
               <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-indigo-100 text-indigo-700">
                 New
               </span>
+            </Link>
+
+            <Link
+              href="/leaderboard"
+              className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition ${
+                isActive('/leaderboard')
+                  ? 'bg-indigo-50 text-indigo-600 font-bold'
+                  : 'text-slate-700 hover:bg-slate-100/80'
+              }`}
+            >
+              <Trophy className="w-4 h-4 text-amber-500" />
+              <span>Leaderboard & Streaks</span>
             </Link>
 
 

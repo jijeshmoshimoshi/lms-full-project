@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import api from '../lib/api';
 import { useAuth } from '../context/AuthContext';
+import { useGamification } from '../context/GamificationContext';
 
 // Sample In-Memory Database for SQL Sandbox
 const SAMPLE_SQL_DATABASE = {
@@ -658,6 +659,7 @@ export default function CodeSandbox({
   onClose = null,
 }) {
   const { user } = useAuth();
+  const { awardPlaygroundRun } = useGamification();
   const [language, setLanguage] = useState(initialLanguage); // 'web' | 'javascript' | 'python' | 'sql'
   const [webTab, setWebTab] = useState('html'); // 'html' | 'css' | 'js'
 
@@ -1096,6 +1098,11 @@ sys.stderr = io.StringIO()
     } else if (language === 'sql') {
       runSQLQuery();
       if (activeOutputTab !== 'sql_grid') setActiveOutputTab('sql_grid');
+    }
+
+    // Award XP for code execution in playground
+    if (awardPlaygroundRun) {
+      awardPlaygroundRun();
     }
   };
 

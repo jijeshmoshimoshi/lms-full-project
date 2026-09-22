@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, useCallback } from 'react';
 import api from '../lib/api';
+import { useGamification } from '../context/GamificationContext';
 import {
   X, BookOpen, CheckCircle2, XCircle, RotateCcw, Trophy,
   ChevronRight, AlertCircle, Clock, Zap, Target, Award,
@@ -298,6 +299,7 @@ function ResultsScreen({ quiz, result, answers, onRetry, onClose, isSavedAttempt
  * @param {Function} onClose - Callback to close/unmount the player
  */
 export default function QuizPlayer({ lessonId, userId, onClose }) {
+  const { triggerReward } = useGamification();
   const [screen, setScreen] = useState('loading'); // 'loading' | 'error' | 'noQuiz' | 'intro' | 'questions' | 'submitting' | 'results'
   const [quiz, setQuiz] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -368,6 +370,11 @@ export default function QuizPlayer({ lessonId, userId, onClose }) {
       const resultData = res.data;
       setResult(resultData);
       setIsSavedAttempt(false);
+
+      // Trigger gamification XP celebration
+      if (resultData.gamification && triggerReward) {
+        triggerReward(resultData.gamification);
+      }
 
       // ── Persist the attempt to localStorage ──────────────────────────────
       try {

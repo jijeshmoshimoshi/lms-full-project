@@ -3,17 +3,22 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
+import { useGamification } from '../../context/GamificationContext';
 import CertificateModal from '../../components/CertificateModal';
+import StreakCalendar from '../../components/StreakCalendar';
 import { 
   BookOpen, GraduationCap, Award, TrendingUp, ArrowRight, 
-  CheckCircle2, Clock, Sparkles, Trophy, Printer, ExternalLink, AlertTriangle
+  CheckCircle2, Clock, Sparkles, Trophy, Printer, ExternalLink, AlertTriangle,
+  Flame, Zap, Code2, Lock, Check, Footprints, Crown, Star
 } from 'lucide-react';
 
 export default function DashboardPage() {
   const { user, loading } = useAuth();
+  const { profile, claimDailyCheckIn } = useGamification();
   const [enrollments, setEnrollments] = useState([]);
   const [fetching, setFetching] = useState(true);
   const [selectedCert, setSelectedCert] = useState(null);
+  const [claiming, setClaiming] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -23,6 +28,17 @@ export default function DashboardPage() {
         .finally(() => setFetching(false));
     }
   }, [user]);
+
+  const handleClaim = async () => {
+    try {
+      setClaiming(true);
+      await claimDailyCheckIn();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setClaiming(false);
+    }
+  };
 
   if (loading || fetching) {
     return (
@@ -71,11 +87,15 @@ export default function DashboardPage() {
     });
   };
 
+  const levelInfo = profile?.levelInfo;
+  const isTodayActive = profile?.isTodayActive || false;
+  const badges = profile?.badges || [];
+
   return (
-    <div className="max-w-6xl mx-auto px-6 py-10 space-y-10">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 space-y-10">
       
-      {/* Welcome Banner */}
-      <div className="relative p-8 rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white shadow-xl overflow-hidden">
+      {/* Welcome & Gamification Banner */}
+      <div className="relative p-8 rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white shadow-xl overflow-hidden border border-indigo-500/30">
         <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
@@ -85,19 +105,233 @@ export default function DashboardPage() {
             </div>
             <h1 className="text-3xl font-extrabold tracking-tight">Welcome back, {user.name}!</h1>
             <p className="text-slate-300 text-sm mt-1 max-w-lg">
-              Track your lecture completion, pick up where you left off, and claim your earned certificates.
+              Level up your developer skills, maintain your daily learning streak, and earn official credentials.
             </p>
           </div>
 
-          <Link
-            href="/courses"
-            className="self-start md:self-auto flex items-center gap-2 px-5 py-3 rounded-xl bg-white text-slate-900 text-sm font-bold shadow-md hover:bg-slate-100 transition duration-200"
-          >
-            <BookOpen className="w-4 h-4 text-indigo-600" />
-            <span>Browse More Courses</span>
-          </Link>
+          {profile && (
+            <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md p-3.5 rounded-2xl border border-white/15">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-amber-500 via-orange-500 to-rose-500 flex items-center justify-center text-white shadow-md">
+                <Flame className="w-6 h-6 fill-white" />
+              </div>
+              <div>
+                <p className="text-xs text-amber-300 font-bold uppercase tracking-wider">{profile.streak} Day Streak 🔥</p>
+                <p className="text-lg font-black text-white">{profile.xp} Total XP</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Gamification Hub: Level Progress & Daily Quests */}
+      {profile && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          {/* Level Progress & Streak Card */}
+          <div className="lg:col-span-2 bg-white p-6 sm:p-7 rounded-3xl border border-slate-200/80 shadow-xs space-y-6 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center font-black text-lg shadow-sm">
+                    {levelInfo?.level || 1}
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-slate-900 text-lg">
+                      Level {levelInfo?.level || 1}: {levelInfo?.title || 'Novice'}
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      {levelInfo?.xpToNextLevel || 0} XP needed to reach Level {(levelInfo?.level || 1) + 1}
+                    </p>
+                  </div>
+                </div>
+
+                <Link
+                  href="/leaderboard"
+                  className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition"
+                >
+                  <Trophy className="w-4 h-4 text-amber-500" />
+                  <span>Leaderboard</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+
+              {/* Animated Level Bar */}
+              <div className="mt-5 space-y-2">
+                <div className="flex justify-between text-xs font-bold text-slate-600">
+                  <span>Level {levelInfo?.level || 1}</span>
+                  <span className="text-indigo-600">{levelInfo?.progressPercent || 0}% Complete</span>
+                  <span>Level {(levelInfo?.level || 1) + 1}</span>
+                </div>
+                <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden p-0.5">
+                  <div
+                    className="h-2 rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 transition-all duration-500"
+                    style={{ width: `${levelInfo?.progressPercent || 0}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Streak 7-Day Matrix */}
+            <div className="pt-4 border-t border-slate-100">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">7-Day Streak Tracker</p>
+              <StreakCalendar profile={profile} compact={false} />
+            </div>
+          </div>
+
+          {/* Daily Quests / Missions Card */}
+          <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-3xl border border-indigo-500/30 shadow-md flex flex-col justify-between space-y-4">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-amber-400 fill-amber-400" />
+                  <span>Daily Quests</span>
+                </h3>
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  {profile.todayXp} / {profile.dailyGoalXp} XP
+                </span>
+              </div>
+
+              {/* Missions Checklist */}
+              <div className="space-y-3">
+                {/* Quest 1: Daily Checkin */}
+                <div className="p-3.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${isTodayActive ? 'bg-emerald-500 text-white' : 'bg-white/10 text-slate-300'}`}>
+                      {isTodayActive ? <Check className="w-4 h-4" /> : '1'}
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-white">Daily Check-in</p>
+                      <p className="text-[11px] text-amber-300 font-semibold">+25 XP bonus</p>
+                    </div>
+                  </div>
+
+                  {isTodayActive ? (
+                    <span className="text-[11px] font-bold text-emerald-400">Done</span>
+                  ) : (
+                    <button
+                      onClick={handleClaim}
+                      disabled={claiming}
+                      className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-extrabold transition shadow-xs cursor-pointer"
+                    >
+                      {claiming ? '...' : 'Claim'}
+                    </button>
+                  )}
+                </div>
+
+                {/* Quest 2: Watch Lesson */}
+                <div className="p-3.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-white/10 text-slate-300 flex items-center justify-center font-bold text-xs shrink-0">
+                      <BookOpen className="w-4 h-4 text-indigo-300" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-white">Complete 1 Lesson</p>
+                      <p className="text-[11px] text-amber-300 font-semibold">+50 XP per lesson</p>
+                    </div>
+                  </div>
+
+                  <Link
+                    href="/courses"
+                    className="px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition"
+                  >
+                    Learn
+                  </Link>
+                </div>
+
+                {/* Quest 3: Code in Sandbox */}
+                <div className="p-3.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-white/10 text-slate-300 flex items-center justify-center font-bold text-xs shrink-0">
+                      <Code2 className="w-4 h-4 text-pink-300" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-white">Run Code in Sandbox</p>
+                      <p className="text-[11px] text-amber-300 font-semibold">+15 XP / execution</p>
+                    </div>
+                  </div>
+
+                  <Link
+                    href="/playground"
+                    className="px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition"
+                  >
+                    Lab
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+            <Link
+              href="/leaderboard"
+              className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-center text-xs font-bold text-indigo-200 transition flex items-center justify-center gap-2"
+            >
+              <span>View Global Rankings</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+        </div>
+      )}
+
+      {/* Badges & Achievements Cabinet */}
+      {badges.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <Award className="w-5 h-5 text-indigo-600" />
+                <span>Badges & Achievements ({profile?.unlockedBadgeCount || 0}/{profile?.totalBadgeCount || 10})</span>
+              </h2>
+              <p className="text-xs text-slate-500">Milestone trophies unlocked through learning, streaks, and assessments.</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3.5">
+            {badges.map((badge) => (
+              <div
+                key={badge.id}
+                className={`p-4 rounded-2xl border text-center transition flex flex-col items-center justify-between gap-2 ${
+                  badge.isUnlocked
+                    ? 'bg-gradient-to-b from-amber-500/10 via-amber-100/30 to-white border-amber-300/80 shadow-xs'
+                    : 'bg-slate-50/80 border-slate-200/60 opacity-60'
+                }`}
+              >
+                <div
+                  className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg shadow-sm ${
+                    badge.isUnlocked
+                      ? 'bg-gradient-to-tr from-amber-500 via-orange-500 to-rose-500 text-white'
+                      : 'bg-slate-200 text-slate-400'
+                  }`}
+                >
+                  {badge.isUnlocked ? (
+                    <Trophy className="w-6 h-6 text-white" />
+                  ) : (
+                    <Lock className="w-5 h-5 text-slate-400" />
+                  )}
+                </div>
+
+                <div>
+                  <h4 className={`text-xs font-bold ${badge.isUnlocked ? 'text-slate-900' : 'text-slate-500'}`}>
+                    {badge.title}
+                  </h4>
+                  <p className="text-[10px] text-slate-400 mt-0.5 line-clamp-2 leading-tight">
+                    {badge.description}
+                  </p>
+                </div>
+
+                <span
+                  className={`text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                    badge.isUnlocked
+                      ? 'bg-amber-100 text-amber-800'
+                      : 'bg-slate-200/80 text-slate-500'
+                  }`}
+                >
+                  {badge.isUnlocked ? 'Unlocked' : 'Locked'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Metrics Row */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">

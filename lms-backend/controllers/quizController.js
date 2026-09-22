@@ -1,5 +1,6 @@
 const Quiz = require('../models/Quiz');
 const { sendQuizResultEmail } = require('../services/emailService');
+const { awardActivityXp } = require('../services/gamificationService');
 
 exports.createQuiz = async (req, res) => {
   try {
@@ -50,6 +51,25 @@ exports.submitQuiz = async (req, res) => {
     const score = Math.round((correct / quiz.questions.length) * 100);
     const passed = score >= quiz.passingScore;
 
+    let gamificationResult = null;
+    if (passed && req.user?._id) {
+      if (score === 100) {
+        gamificationResult = await awardActivityXp(
+          req.user._id,
+          'QUIZ_PERFECT',
+          60,
+          `Perfect 100% on Quiz: ${quiz.title || 'Assessment'}`
+        );
+      } else {
+        gamificationResult = await awardActivityXp(
+          req.user._id,
+          'QUIZ_PASS',
+          40,
+          `Passed Quiz: ${quiz.title || 'Assessment'} (${score}%)`
+        );
+      }
+    }
+
     // Send email notification asynchronously
     if (req.user?.email) {
       sendQuizResultEmail({
@@ -63,7 +83,7 @@ exports.submitQuiz = async (req, res) => {
       }).catch((err) => console.error('[EmailService] Quiz result email error:', err.message));
     }
 
-    res.json({ score, passed });
+    res.json({ score, passed, gamification: gamificationResult });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

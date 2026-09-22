@@ -53,6 +53,19 @@ export default function CartPage() {
   const finalTotal = Math.max(0, cartTotal - discountAmount);
   const totalSavings = (cartOriginalTotal - cartTotal) + discountAmount;
 
+  // Filter active coupons applicable to at least one course in the cart or 'all'
+  const applicableCartCoupons = availableCoupons.filter((c) => {
+    if (!c.applicableTo || c.applicableTo === 'all') return true;
+    if (c.courses && Array.isArray(c.courses) && cart.length > 0) {
+      const cartCourseIds = cart.map(item => String(item._id));
+      return c.courses.some(id => {
+        const idStr = String(typeof id === 'object' && id !== null ? (id._id || id) : id);
+        return cartCourseIds.includes(idStr);
+      });
+    }
+    return false;
+  });
+
   const applySpecificCoupon = async (codeToApply) => {
     const code = (codeToApply || couponCode).trim();
     if (!code) return;
@@ -531,26 +544,41 @@ export default function CartPage() {
                     </button>
                   </form>
                   {/* Real Active Offers from DB only (No dummy coupons shown) */}
-                  {availableCoupons && availableCoupons.length > 0 && (
+                  {applicableCartCoupons && applicableCartCoupons.length > 0 && (
                     <div className="space-y-1.5 pt-1">
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
                         Available Offers
                       </span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {availableCoupons.map((promo) => (
-                          <button
+                      <div className="space-y-1.5">
+                        {applicableCartCoupons.map((promo) => (
+                          <div
                             key={promo._id || promo.code}
-                            type="button"
-                            onClick={() => applySpecificCoupon(promo.code)}
-                            disabled={couponLoading}
-                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100/80 border border-indigo-200/60 text-indigo-700 text-[11px] font-bold transition cursor-pointer"
+                            className="p-2.5 rounded-xl bg-indigo-50/70 border border-indigo-200/80 flex items-center justify-between gap-2 transition hover:bg-indigo-50"
                           >
-                            <Sparkles className="w-3 h-3 text-indigo-500" />
-                            <span className="font-mono">{promo.code}</span>
-                            <span className="text-[10px] text-indigo-500 font-normal">
-                              ({promo.discountType === 'percentage' ? `${promo.discountValue}% OFF` : `₹${promo.discountValue} OFF`})
-                            </span>
-                          </button>
+                            <div className="min-w-0 space-y-0.5">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-mono font-bold text-xs text-indigo-950 px-1.5 py-0.5 bg-white rounded border border-indigo-200">
+                                  {promo.code}
+                                </span>
+                                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-1.5 py-0.5 rounded">
+                                  {promo.discountType === 'percentage' ? `${promo.discountValue}% OFF` : `₹${promo.discountValue} OFF`}
+                                </span>
+                              </div>
+                              {promo.description ? (
+                                <p className="text-[10px] text-slate-500 truncate">{promo.description}</p>
+                              ) : promo.minOrderAmount > 0 ? (
+                                <p className="text-[10px] text-slate-400">Min. order ₹{promo.minOrderAmount}</p>
+                              ) : null}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => applySpecificCoupon(promo.code)}
+                              disabled={couponLoading}
+                              className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[11px] font-bold transition disabled:opacity-50 cursor-pointer shrink-0"
+                            >
+                              Apply
+                            </button>
+                          </div>
                         ))}
                       </div>
                     </div>

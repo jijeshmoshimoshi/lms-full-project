@@ -45,6 +45,34 @@ const userSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    // Gamification & Streaks System
+    xp: { type: Number, default: 0, min: 0 },
+    level: { type: Number, default: 1, min: 1 },
+    streak: { type: Number, default: 0, min: 0 },
+    longestStreak: { type: Number, default: 0, min: 0 },
+    lastActiveDate: { type: String, default: "" }, // YYYY-MM-DD
+    streakHistory: [{ type: String }], // Array of YYYY-MM-DD dates
+    streakFreezeCount: { type: Number, default: 1, min: 0 },
+    dailyGoalXp: { type: Number, default: 50, min: 10 },
+    todayXp: { type: Number, default: 0, min: 0 },
+    badges: [
+      {
+        id: { type: String, required: true },
+        title: { type: String, required: true },
+        description: { type: String, default: "" },
+        icon: { type: String, default: "trophy" },
+        category: { type: String, default: "achievement" },
+        unlockedAt: { type: Date, default: Date.now },
+      },
+    ],
+    xpHistory: [
+      {
+        action: { type: String, required: true },
+        xp: { type: Number, required: true },
+        description: { type: String, default: "" },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   { timestamps: true },
 );

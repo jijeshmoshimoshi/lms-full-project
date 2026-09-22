@@ -2,6 +2,7 @@ const Enrollment = require('../models/Enrollment');
 const Course = require('../models/Course');
 const Module = require('../models/Module');
 const { sendEnrollmentConfirmationEmail } = require('../services/emailService');
+const { awardActivityXp } = require('../services/gamificationService');
 
 exports.enroll = async (req, res) => {
   try {
@@ -60,14 +61,23 @@ exports.markLessonComplete = async (req, res) => {
     let enrollment = await Enrollment.findOne({ student: req.user._id, course: courseId });
     if (!enrollment) return res.status(404).json({ message: 'Not enrolled in this course' });
 
+    let gamificationResult = null;
     const alreadyDone = enrollment.completedLessons.some(id => String(id) === String(lessonId));
     if (!alreadyDone) {
       enrollment.completedLessons.push(lessonId);
+      // Award XP & Streak for completing a lesson
+      gamificationResult = await awardActivityXp(
+        req.user._id,
+        'LESSON_COMPLETE',
+        50,
+        'Completed Video Lesson'
+      );
     }
 
     const course = await Course.findById(courseId).populate({ path: 'modules', populate: 'lessons' });
     const totalLessons = course ? course.modules.reduce((sum, m) => sum + (m.lessons ? m.lessons.length : 0), 0) : 0;
     
+    const wasAlreadyCompleted = enrollment.isCompleted;
     enrollment.progressPercent = totalLessons > 0
       ? Math.min(100, Math.round((enrollment.completedLessons.length / totalLessons) * 100))
       : 100;
@@ -82,10 +92,26 @@ exports.markLessonComplete = async (req, res) => {
         const randomHex = Math.random().toString(36).substring(2, 8).toUpperCase();
         enrollment.certificateId = `CERT-${new Date().getFullYear()}-${randomHex}`;
       }
+
+      // If newly graduated course, award big 200 XP mastery bonus!
+      if (!wasAlreadyCompleted) {
+        const courseGraduationReward = await awardActivityXp(
+          req.user._id,
+          'COURSE_COMPLETE',
+          200,
+          `Course Mastered: ${course?.title || 'Graduation'}`
+        );
+        if (courseGraduationReward) {
+          gamificationResult = courseGraduationReward;
+        }
+      }
     }
 
     await enrollment.save();
-    res.json(enrollment);
+    res.json({
+      ...enrollment.toObject(),
+      gamification: gamificationResult,
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
