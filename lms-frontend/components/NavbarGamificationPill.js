@@ -50,12 +50,12 @@ export default function NavbarGamificationPill() {
       {/* Trigger Pill */}
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 sm:gap-2 px-2.5 py-1.5 rounded-2xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-rose-500/10 hover:from-amber-500/20 hover:to-orange-500/20 border border-orange-200/80 transition-all duration-200 cursor-pointer shadow-xs"
+        className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-2.5 py-1.5 rounded-2xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-rose-500/10 hover:from-amber-500/20 hover:to-orange-500/20 border border-orange-200/80 transition-all duration-200 cursor-pointer shadow-xs shrink-0 whitespace-nowrap"
         title="Streak & XP Progression"
       >
         {/* Streak Flame Badge */}
-        <div className="flex items-center gap-1 text-orange-600 font-extrabold text-xs">
-          <div className="w-5 h-5 rounded-lg bg-gradient-to-tr from-amber-500 to-orange-500 text-white flex items-center justify-center shadow-xs">
+        <div className="flex items-center gap-1 text-orange-600 font-extrabold text-xs shrink-0">
+          <div className="w-5 h-5 rounded-lg bg-gradient-to-tr from-amber-500 to-orange-500 text-white flex items-center justify-center shadow-xs shrink-0">
             <Flame className="w-3.5 h-3.5 fill-white animate-pulse" />
           </div>
           <span>{streak}</span>
@@ -64,10 +64,10 @@ export default function NavbarGamificationPill() {
         <div className="h-3 w-[1px] bg-orange-200/90" />
 
         {/* Level & XP Badge */}
-        <div className="flex items-center gap-1 text-slate-800 text-xs font-bold">
+        <div className="flex items-center gap-1 text-slate-800 text-xs font-bold shrink-0">
           <span className="text-amber-500">⭐</span>
           <span>Lvl {levelInfo?.level || 1}</span>
-          <span className="text-slate-400 font-normal hidden lg:inline">({xp} XP)</span>
+          <span className="text-slate-400 font-normal hidden xl:inline">({xp} XP)</span>
         </div>
       </button>
 

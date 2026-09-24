@@ -28,7 +28,8 @@ const aiRoutes = require('./routes/aiRoutes');
 const commentRoutes = require('./routes/commentRoutes');
 const snippetRoutes = require('./routes/snippetRoutes');
 const gamificationRoutes = require('./routes/gamificationRoutes');
-
+const studyRoomRoutes = require('./routes/studyRoomRoutes');
+const { setupStudyRoomSockets } = require('./sockets/studyRoomSocket');
 
 const { startReminderScheduler } = require('./services/reminderScheduler');
 const { setLiveSessionIo } = require('./controllers/liveSessionController');
@@ -66,6 +67,7 @@ const io = new Server(server, {
 });
 
 setLiveSessionIo(io);
+setupStudyRoomSockets(io);
 
 connectDB();
 
@@ -146,6 +148,7 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/comments', commentRoutes);
 app.use('/api/snippets', snippetRoutes);
 app.use('/api/gamification', gamificationRoutes);
+app.use('/api/study-rooms', studyRoomRoutes);
 
 
 // 404 handler

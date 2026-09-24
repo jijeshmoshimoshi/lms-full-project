@@ -10,7 +10,7 @@ import NavbarGamificationPill from './NavbarGamificationPill';
 import { 
   BookOpen, GraduationCap, LayoutDashboard, LogOut, 
   Sparkles, Shield, ShoppingCart, Menu, X, User,
-  Bell, Radio, Clock, CheckCheck, ExternalLink, Calendar, Code2, Trophy, Flame
+  Bell, Radio, Clock, CheckCheck, ExternalLink, Calendar, Code2, Trophy, Flame, Users, ChevronDown
 } from 'lucide-react';
 
 
@@ -20,6 +20,8 @@ export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef(null);
 
   // Notification states
   const [notifications, setNotifications] = useState([]);
@@ -81,11 +83,14 @@ export default function Navbar() {
     };
   }, [user]);
 
-  // Close notification dropdown when clicking outside
+  // Close notification & user dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (notifRef.current && !notifRef.current.contains(e.target)) {
         setShowNotifs(false);
+      }
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+        setUserMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -118,15 +123,20 @@ export default function Navbar() {
     }
   };
 
-  // Close mobile menu whenever navigation path changes
+  // Close menus whenever navigation path changes
   useEffect(() => {
     setMobileMenuOpen(false);
+    setUserMenuOpen(false);
   }, [pathname]);
 
-  // Close mobile menu on Esc key
+  // Close menus on Esc key
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape') setMobileMenuOpen(false);
+      if (e.key === 'Escape') {
+        setMobileMenuOpen(false);
+        setUserMenuOpen(false);
+        setShowNotifs(false);
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
@@ -154,57 +164,73 @@ export default function Navbar() {
         </Link>
 
         {/* Desktop Navigation Links */}
-        <nav className="hidden md:flex items-center gap-1.5 lg:gap-2">
+        <nav className="hidden md:flex items-center gap-1 xl:gap-2">
           <Link
             href="/courses"
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+            className={`flex items-center gap-2 px-2.5 xl:px-3.5 py-1.5 xl:py-2 rounded-xl text-sm font-medium whitespace-nowrap shrink-0 transition-all duration-200 ${
               isActive('/courses')
                 ? 'bg-indigo-50 text-indigo-600 font-bold shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
             }`}
           >
-            <BookOpen className="w-4 h-4" />
+            <BookOpen className="w-4 h-4 shrink-0" />
             <span>Courses</span>
           </Link>
 
           <Link
             href="/playground"
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+            className={`flex items-center gap-2 px-2.5 xl:px-3.5 py-1.5 xl:py-2 rounded-xl text-sm font-medium whitespace-nowrap shrink-0 transition-all duration-200 ${
               isActive('/playground')
                 ? 'bg-indigo-50 text-indigo-600 font-bold shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
             }`}
           >
-            <Code2 className="w-4 h-4 text-indigo-600" />
+            <Code2 className="w-4 h-4 text-indigo-600 shrink-0" />
             <span>Playground</span>
-            <span className="px-1.5 py-0.2 text-[9px] font-black uppercase bg-gradient-to-r from-indigo-500 to-fuchsia-500 text-white rounded-full leading-none">
+            <span className="px-1.5 py-0.2 text-[9px] font-black uppercase bg-gradient-to-r from-indigo-500 to-fuchsia-500 text-white rounded-full leading-none shrink-0">
               New
             </span>
           </Link>
 
           <Link
             href="/leaderboard"
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+            className={`flex items-center gap-2 px-2.5 xl:px-3.5 py-1.5 xl:py-2 rounded-xl text-sm font-medium whitespace-nowrap shrink-0 transition-all duration-200 ${
               isActive('/leaderboard')
                 ? 'bg-indigo-50 text-indigo-600 font-bold shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
             }`}
           >
-            <Trophy className="w-4 h-4 text-amber-500" />
+            <Trophy className="w-4 h-4 text-amber-500 shrink-0" />
             <span>Leaderboard</span>
+          </Link>
+
+          <Link
+            href="/study-rooms"
+            className={`flex items-center gap-2 px-2.5 xl:px-3.5 py-1.5 xl:py-2 rounded-xl text-sm font-medium whitespace-nowrap shrink-0 transition-all duration-200 ${
+              isActive('/study-rooms') || pathname?.startsWith('/study-rooms')
+                ? 'bg-indigo-50 text-indigo-600 font-bold shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
+            }`}
+          >
+            <Users className="w-4 h-4 text-violet-600 shrink-0" />
+            <span>Study Rooms</span>
+            <span className="relative flex h-2 w-2 ml-0.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
           </Link>
 
           {user && (
             <Link
               href="/dashboard"
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+              className={`flex items-center gap-2 px-2.5 xl:px-3.5 py-1.5 xl:py-2 rounded-xl text-sm font-medium whitespace-nowrap shrink-0 transition-all duration-200 ${
                 isActive('/dashboard')
                   ? 'bg-indigo-50 text-indigo-600 font-bold shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
               }`}
             >
-              <LayoutDashboard className="w-4 h-4" />
-              <span>My Dashboard</span>
+              <LayoutDashboard className="w-4 h-4 shrink-0" />
+              <span>Dashboard</span>
             </Link>
           )}
 
@@ -214,9 +240,9 @@ export default function Navbar() {
               href="http://localhost:3001"
               target="_blank"
               rel="noreferrer"
-              className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-xl bg-violet-50 text-violet-700 hover:bg-violet-100 border border-violet-200/60 transition ml-1"
+              className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-xl bg-violet-50 text-violet-700 hover:bg-violet-100 border border-violet-200/60 transition ml-1 whitespace-nowrap shrink-0"
             >
-              <Shield className="w-3.5 h-3.5 text-violet-600" />
+              <Shield className="w-3.5 h-3.5 text-violet-600 shrink-0" />
               <span>Admin Panel</span>
             </a>
           )}
@@ -330,7 +356,7 @@ export default function Navbar() {
           {/* Shopping Cart Button - Always visible on both mobile and desktop */}
           <Link
             href="/cart"
-            className={`relative flex items-center justify-center p-2 sm:px-3 sm:py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+            className={`relative flex items-center justify-center p-2 sm:px-2.5 xl:px-3 sm:py-2 rounded-xl text-sm font-medium whitespace-nowrap shrink-0 transition-all duration-200 ${
               isActive('/cart')
                 ? 'bg-indigo-50 text-indigo-600 font-semibold'
                 : 'text-slate-700 hover:text-indigo-600 hover:bg-slate-100/70'
@@ -345,43 +371,88 @@ export default function Navbar() {
                 </span>
               )}
             </div>
-            <span className="hidden lg:inline ml-2 text-xs font-bold">Cart</span>
+            <span className="hidden xl:inline ml-2 text-xs font-bold">Cart</span>
           </Link>
 
           {/* Desktop Auth Section */}
-          <div className="hidden md:flex items-center gap-2.5">
+          <div className="hidden md:flex items-center gap-1.5 xl:gap-2.5 shrink-0">
             {user ? (
-              <>
-                <div className="h-4 w-[1px] bg-slate-200 mx-1" />
-                <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-slate-100/80 border border-slate-200/60">
-                  <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white text-xs font-bold flex items-center justify-center uppercase shadow-xs">
+              <div className="relative" ref={userMenuRef}>
+                <button
+                  onClick={() => setUserMenuOpen((prev) => !prev)}
+                  className="flex items-center gap-2 pl-1.5 pr-2.5 py-1 rounded-full bg-slate-100/90 hover:bg-slate-200/80 border border-slate-200/80 transition-all duration-200 cursor-pointer shadow-xs group"
+                  aria-label="User profile and account settings"
+                >
+                  <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white text-xs font-bold flex items-center justify-center uppercase shadow-xs shrink-0 group-hover:scale-105 transition-transform">
                     {user.name ? user.name.charAt(0) : 'U'}
                   </div>
-                  <span className="text-xs font-semibold text-slate-700 max-w-[120px] truncate">
+                  <span className="text-xs font-semibold text-slate-700 max-w-[90px] xl:max-w-[130px] truncate">
                     {user.name}
                   </span>
-                </div>
-
-                <button
-                  onClick={logout}
-                  className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-rose-600 hover:bg-rose-50 px-2.5 py-1.5 rounded-xl transition cursor-pointer"
-                  title="Logout"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  <span>Logout</span>
+                  <ChevronDown className={`w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 transition-transform duration-200 ${userMenuOpen ? 'rotate-180' : ''}`} />
                 </button>
-              </>
+
+                {/* User Dropdown Menu */}
+                {userMenuOpen && (
+                  <div className="absolute right-0 top-11 w-56 bg-white border border-slate-200/90 rounded-2xl shadow-xl z-50 overflow-hidden py-1.5 animate-in fade-in slide-in-from-top-2 duration-150">
+                    <div className="px-3.5 py-2.5 border-b border-slate-100 bg-slate-50/50">
+                      <p className="text-xs font-bold text-slate-900 truncate">{user.name}</p>
+                      <p className="text-[11px] text-slate-500 truncate mt-0.5">{user.email}</p>
+                      <span className="inline-block mt-1.5 text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100">
+                        {user.role || 'student'}
+                      </span>
+                    </div>
+
+                    <div className="p-1 space-y-0.5">
+                      <Link
+                        href="/dashboard"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-700 hover:text-indigo-600 hover:bg-slate-100/70 rounded-xl transition"
+                      >
+                        <LayoutDashboard className="w-4 h-4 text-indigo-500" />
+                        <span>Dashboard</span>
+                      </Link>
+
+                      {(user.role === 'admin' || user.role === 'instructor') && (
+                        <a
+                          href="http://localhost:3001"
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-violet-700 hover:bg-violet-50 rounded-xl transition"
+                        >
+                          <Shield className="w-4 h-4 text-violet-600" />
+                          <span>Admin Panel</span>
+                        </a>
+                      )}
+                    </div>
+
+                    <div className="p-1 border-t border-slate-100">
+                      <button
+                        onClick={() => {
+                          setUserMenuOpen(false);
+                          logout();
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl transition cursor-pointer"
+                      >
+                        <LogOut className="w-4 h-4 text-rose-500" />
+                        <span>Log Out</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : (
               <>
                 <Link
                   href="/login"
-                  className="px-3.5 py-2 text-xs font-bold text-slate-700 hover:text-indigo-600 hover:bg-slate-100/60 rounded-xl transition"
+                  className="px-3 xl:px-3.5 py-2 text-xs font-bold text-slate-700 hover:text-indigo-600 hover:bg-slate-100/60 rounded-xl transition whitespace-nowrap"
                 >
                   Sign In
                 </Link>
                 <Link
                   href="/register"
-                  className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 rounded-xl shadow-md shadow-indigo-500/20 hover:shadow-indigo-500/30 transition duration-200"
+                  className="flex items-center gap-1.5 px-3.5 xl:px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 rounded-xl shadow-md shadow-indigo-500/20 hover:shadow-indigo-500/30 transition duration-200 whitespace-nowrap"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
                   <span>Get Started</span>
@@ -512,6 +583,24 @@ export default function Navbar() {
             >
               <Trophy className="w-4 h-4 text-amber-500" />
               <span>Leaderboard & Streaks</span>
+            </Link>
+
+            <Link
+              href="/study-rooms"
+              className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition ${
+                isActive('/study-rooms') || pathname?.startsWith('/study-rooms')
+                  ? 'bg-indigo-50 text-indigo-600 font-bold'
+                  : 'text-slate-700 hover:bg-slate-100/80'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Users className="w-4 h-4 text-violet-600" />
+                <span>Virtual Study Rooms</span>
+              </div>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-700 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Live
+              </span>
             </Link>
 
 
